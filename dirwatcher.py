@@ -7,7 +7,11 @@ import re
 import logging
 
 
-__author__ = 'Diarte Jeffcoat w/help from Daniel Lomelino, Kyle Negley and Randy Charity Jr'
+__author__ = '''Diarte Jeffcoat w/help from Daniel Lomelino, Kyle Negley, Randy Charity Jr
+            & the #after-hours-work 07/07/20 study session with Piero Madar'''
+
+# Progress Report: Currently, the file & text detection are functioning, but the extension filter is not functioning. Also, need to have text detection not start over upon searching for magic text.
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -21,49 +25,52 @@ stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
 
 exit_flag = False
+path_list = {}
 
 
-def scan_single_file(filename, text, extension):
-    with open(filename) as f:
-        for line in f.readlines():
-            if re.search(text, line):
-                logger.info(f"I found the magic text in {filename}!")
+def scan_single_file(path, cursor, magic):
+    cursor = 0
+    with open(path) as d:
+        for linenum, line in enumerate(d):
+            if linenum >= cursor:
+                if re.search(magic, line):
+                    logger.info(
+                        f"I found the magic text \'{magic}\' in {path} on {linenum}!")
 
 
-def detect_added_files(dirname):
+def detect_added_files(files):
     """Searches current directory for any new files that were added"""
-    watch_list = dirname
-    prev_path = dict([(f, None) for f in os.listdir(watch_list)])
-
-    while True:
-        time.sleep(1)
-        new_path = dict([(f, None) for f in os.listdir(watch_list)])
-        for f in new_path:
-            if f not in prev_path:
-                logger.warning(f"Added: {f} found in {dirname}")
-        prev_path = new_path
+    global path_list
+    for f in files:
+        if f not in path_list:
+            path_list[f] = None
+            logger.info(f"Added: {f} found in this directory.")
+    return files
 
 
-def detect_removed_files(dirname):
+def detect_removed_files(files):
     """Searches current directory for any files that were removed"""
-    watch_list = dirname
-    prev_path = dict([(f, None) for f in os.listdir(watch_list)])
-
-    while True:
-        time.sleep(1)
-        new_path = dict([(f, None) for f in os.listdir(watch_list)])
-        for f in new_path:
-            if f not in prev_path:
-                logger.warning(f"Removed: {f} deleted from {dirname}")
-        prev_path = new_path
+    global path_list
+    for f in list(path_list):
+        if f not in files:
+            del path_list[f]
+            logger.info(f"Removed: {f} was deleted from this directory.")
+    return files
 
 
-def watch_directory(dirname, text, extension):
+def watch_directory(args):
     """While the directory is open, this function keeps a watch of
     the activity within the directory"""
-    dir_list = os.listdir(dirname)
-    if os.path.isdir(dirname):
+    dir_list = os.listdir(args.dir)
+    detect_added_files(dir_list)
+    detect_removed_files(dir_list)
+
+    if os.path.isdir(args.dir):
         print(dir_list)
+    for fname in dir_list:
+        pathname = os.path.join(args.dir, fname)
+        path_list[fname] = scan_single_file(
+            pathname, path_list[fname], args.magic)
 
 
 def signal_handler(sig_num, frame):
@@ -88,10 +95,10 @@ def create_parser():
     # Positional Arguments
     parser.add_argument("dir", help="directory path to monitor")
     parser.add_argument(
-        "text", help="magic string to monitor within files")
+        "magic", help="magic string to monitor within files")
     # Optional Arguments
     parser.add_argument(
-        "-int", "--interval", default='3', type=int, help="controls the polling interval of the search")
+        "-int", "--interval", default=1.0, type=int, help="controls the polling interval of the search")
     parser.add_argument(
         "-ext", "--extension", default='.txt', type=str, help="filter the type of files to include in the search")
     return parser
@@ -100,18 +107,19 @@ def create_parser():
 def main(args):
     parser = create_parser()
     ns = parser.parse_args(args)
-    magic = ns.text
+    text = ns.magic
     path = ns.dir
     interval = ns.interval
     extension = ns.extension
-
+    print(ns)
     # Hook into these two signals from the OS
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    # Now my signal_handler will get called if OS sends
-    # either of these to my process.
 
     start = time.perf_counter()
+
+    # detect_added_files(path)
+    # detect_removed_files(path)
 
     logger.info(f'''
     {"-" * 60}\n
@@ -122,14 +130,9 @@ def main(args):
 
     while not exit_flag:
         try:
-            watch_directory(path, magic, extension)
-            # detect_added_files(path)
-            # detect_removed_files(path)
+            watch_directory(ns)
         except FileNotFoundError as fnfe:
-            if fnfe.errno == errno.ENOENT:
-                logger.error(f'{path} not found on system')
-            else:
-                logger.error(fnfe)
+            logger.error(fnfe)
         except OSError as ose:
             logger.error(ose)
         except Exception as e:
@@ -137,7 +140,7 @@ def main(args):
             logger.error(
                 f"UNHANDLED EXCEPTION: Found an unknown exception - {e}")
         # put a sleep inside my while loop so I don't peg the cpu usage at 100%
-        time.sleep(5)
+        time.sleep(interval)
 
     # final exit point happens here
     end = time.perf_counter()

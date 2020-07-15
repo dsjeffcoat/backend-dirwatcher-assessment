@@ -1,1 +1,10 @@
+.env
+.venv/
 .vscode/
+__pycache__/
+.pytest_cache/
+*.pyc
+USAGE.txt
+notes.txt
+watchdir/
+venv/

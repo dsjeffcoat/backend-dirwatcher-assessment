@@ -6,6 +6,4 @@ __pycache__/
 *.pyc
 USAGE.txt
 notes.txt
-watchdir/
 venv/
-watchtest/

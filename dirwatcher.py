@@ -31,17 +31,14 @@ path_list = {}
 def scan_single_file(path, cursor, magic):
     """Search within files of the watched directory in order to find text queries.
     Will return a log event stating where the text was found in the files."""
-    linenum = 0
+    ln_no = 0
     with open(path) as d:
-        for linenum, line in enumerate(d):
-            if linenum >= cursor:
+        for ln_no, line in enumerate(d):
+            if ln_no >= cursor:
                 if magic in line:
                     logger.info(
-                        f"""
-                        ENTRY LOCATED:
-                        Found \'{magic}\' in {path} on {linenum + 1}
-                        """)
-    return linenum + 1
+                        f"ALERT: Found \'{magic}\' in {path} = Line {ln_no+1}")
+    return ln_no + 1
 
 
 def detect_added_files(files, extension):
@@ -95,10 +92,8 @@ def signal_handler(sig_num, frame):
     # log the associated signal name
     global exit_flag
     logger.warning(
-        f'''
-        Received {signal.Signals(sig_num).name} call from terminal.
-        Shutting down program.
-        ''')
+        f'Received {signal.Signals(sig_num).name} call from terminal.')
+    logger.warning('Shutting down program...')
     exit_flag = True
 
 

@@ -13,9 +13,9 @@ __author__ = '''Diarte Jeffcoat w/help from Daniel Lomelino,
 
 logger = logging.getLogger(__name__)
 
-formatter = logging.Formatter('%(asctime)s.%(msecs)03d [%(name)-8s]',
-                              '[ %(levelname)s ]: %(message)s',
-                              datefmt='%m-%d-%Y %H:%M:%S')
+formatter = logging.Formatter(
+    '%(asctime)s.%(msecs)03d [%(name)-8s][%(levelname)s]: %(message)s',
+    datefmt='%m-%d-%Y %H:%M:%S')
 
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
